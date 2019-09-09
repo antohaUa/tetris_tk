@@ -1,4 +1,4 @@
-from random import choice
+from random import choice, randrange
 from tkinter import Canvas, Tk, ALL, messagebox
 
 # speed and window width (can be changed by user)
@@ -34,6 +34,35 @@ class Utils:
         all_overlaps = canvas.find_enclosed(x1 - 1, y1 - 1, x2 + 1, y2 + 1)
         return list(set(all_overlaps) - set(excluded_items))
 
+    @staticmethod
+    def tgm3_randomizer():
+        """
+        Teris Grand Master 3 special random algorithm
+        https://simon.lc/the-history-of-tetris-randomizers
+        """
+        pool = list(range(7)) * 5
+        order = []
+        target_idx = None
+        rand_idx = None
+        first_index = choice([1, 2, 3, 6])
+        yield first_index
+        history = [4, 5, 4, first_index]
+        while True:
+            for roll in range(6):
+                rand_idx = randrange(len(pool))
+                target_idx = pool[rand_idx]
+                if target_idx not in history or roll == 5:
+                    break
+                if order:
+                    pool[rand_idx] = order[0]
+            if target_idx in order:
+                order.remove(target_idx)
+            order.append(target_idx)
+            pool[rand_idx] = order[0]
+            history.pop(0)
+            history.append(target_idx)
+            yield target_idx
+
 
 class TetrisGame:
     canvas = None
@@ -43,14 +72,16 @@ class TetrisGame:
     background_items = []
     limit_coords = None
     score = 0
+    rand = None
 
     def start(self):
         self.tk = Tk()
         self.tk.title('Tkinter TETRIS')
         self.canvas = Canvas(self.tk, bg='gray55', width=CVS_WIDTH, height=CVS_HEIGHT)
         self.draw_background()
-        self.curr_figure = Figure(self.canvas, choice(FIGURE_SHAPES), self.background_items, self.limit_coords)
-        self.next_figure = Figure(self.canvas, choice(FIGURE_SHAPES), self.background_items, self.limit_coords)
+        self.rand = Utils.tgm3_randomizer()
+        self.curr_figure = Figure(self.canvas, FIGURE_SHAPES[next(self.rand)], self.background_items, self.limit_coords)
+        self.next_figure = Figure(self.canvas, FIGURE_SHAPES[next(self.rand)], self.background_items, self.limit_coords)
         self.curr_figure.create()
         self.next_figure.create(next_area=True)
         self.canvas.pack()
@@ -94,7 +125,8 @@ class TetrisGame:
         if self.curr_figure.stopped:
             [self.canvas.delete(blk) for blk in self.next_figure.blocks]
             self.curr_figure = self.next_figure
-            self.next_figure = Figure(self.canvas, choice(FIGURE_SHAPES), self.background_items, self.limit_coords)
+            self.next_figure = Figure(self.canvas, FIGURE_SHAPES[next(self.rand)], self.background_items,
+                                      self.limit_coords)
             if not self.curr_figure.create():
                 self.game_over()
             self.next_figure.create(next_area=True)
